@@ -1,20 +1,23 @@
 <template>
   <v-app>
-    <!-- Your main application content goes here -->
-    <v-main>
-      <v-container class="fill-height">
-        <v-row align="center" justify="center">
-          <v-col class="text-center">
-            <h1 class="text-h3 font-weight-bold mb-4">Patient Portal Dashboard</h1>
-            <p class="text-body-1 text-medium-emphasis">
-              Your main application content goes here. The widget is floating in the bottom right corner!
-            </p>
+    <v-main class="bg-grey-lighten-4">
+      <v-container class="py-8" max-width="960">
+        <v-row justify="center">
+          <v-col cols="12" md="8">
+            <v-card class="rounded-xl elevation-2 pa-6">
+              <v-chip color="primary" class="mb-4" prepend-icon="mdi-heart-pulse">
+                Care coordination
+              </v-chip>
+              <h1 class="text-h4 font-weight-bold mb-3">Welcome to your patient dashboard</h1>
+              <p class="text-body-1 text-medium-emphasis">
+                Review your medication schedule, request a refill, or message your care team from the floating support widget.
+              </p>
+            </v-card>
           </v-col>
         </v-row>
       </v-container>
     </v-main>
 
-    <!-- Theme Toggle (Optional) -->
     <v-btn
       class="ma-2"
       icon="mdi-theme-light-dark"
@@ -23,8 +26,11 @@
       @click="$vuetify.theme.cycle()"
     />
 
-    <!-- Import the floating Patient Widget -->
-    <PatientWidget />
+    <PatientWidget
+      patient-name="Jordan Lee"
+      assistant-title="MediDesk Support"
+      assistant-subtitle="Medication support • refill requests • care chat"
+    />
   </v-app>
 </template>
 
