@@ -15,6 +15,8 @@
             </v-card>
           </v-col>
         </v-row>
+
+        <AgentDashboard />
       </v-container>
     </v-main>
 
@@ -35,5 +37,6 @@
 </template>
 
 <script lang="ts" setup>
+import AgentDashboard from '@/components/AgentDashboard.vue'
 import PatientWidget from '@/components/PatientWidget.vue'
 </script>
