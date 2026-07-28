@@ -91,7 +91,9 @@
               </p>
               <v-select
                 v-model="refillSelection"
-                :items="mockSchedule.map((med) => med.name)"
+                :items="mockSchedule"
+                item-title="name"
+                item-value="name"
                 label="Select Medication"
                 variant="outlined"
                 density="comfortable"
@@ -164,6 +166,7 @@
 
 <script lang="ts" setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { pushValue } from '@/firebase'
 import { useTicketStore } from '@/stores/ticketStore'
 import { slugify } from '@/utils/liveSupport'
 
@@ -214,17 +217,21 @@ const submitRefill = async () => {
   isSubmitting.value = true
 
   try {
-    await ticketStore.submitRefill({
-      patientId: patientId.value,
+    await pushValue('tickets', {
+      type: 'refill',
       patientName: props.patientName,
       medication: refillSelection.value,
       notes: refillNotes.value,
+      status: 'pending',
+      timestamp: Date.now(),
     })
 
     refillSuccessMessage.value = `Refill request sent for ${refillSelection.value}.`
     refillSelection.value = null
     refillNotes.value = ''
     activeTab.value = 'schedule'
+  } catch (error) {
+    console.error('Firebase write error:', error)
   } finally {
     isSubmitting.value = false
   }
