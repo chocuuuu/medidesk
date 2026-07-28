@@ -1,25 +1,11 @@
 <template>
-  <v-btn
-    icon="mdi-message-text"
-    color="primary"
-    size="large"
-    elevation="8"
-    position="fixed"
-    location="bottom right"
-    class="ma-6"
-    style="z-index: 9998;"
-    @click="isOpen = !isOpen"
-  />
+  <v-btn icon="mdi-message-text" color="primary" size="large" elevation="8" position="fixed" location="bottom right"
+    class="ma-6" style="z-index: 9998;" @click="isOpen = !isOpen" />
 
   <v-expand-transition>
-    <v-card
-      v-if="isOpen"
-      class="elevation-10 d-flex flex-column position-fixed border"
-      width="350"
-      height="500"
+    <v-card v-if="isOpen" class="elevation-10 d-flex flex-column position-fixed border" width="350" height="500"
       rounded="xl"
-      style="bottom: 90px; right: 24px; z-index: 9999; background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);"
-    >
+      style="bottom: 90px; right: 24px; z-index: 9999; background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);">
       <v-toolbar color="primary" density="compact" class="flex-grow-0 rounded-t-xl">
         <v-toolbar-title class="d-flex flex-column">
           <span class="text-subtitle-1 font-weight-bold">{{ assistantTitle }}</span>
@@ -29,6 +15,7 @@
         <v-btn icon="mdi-close" variant="text" size="small" @click="isOpen = false" />
       </v-toolbar>
 
+      <!-- STREAMING_CHUNK: Adding tab navigation for different features... -->
       <v-tabs v-model="activeTab" bg-color="primary" density="compact" grow class="flex-grow-0">
         <v-tab value="schedule">Schedule</v-tab>
         <v-tab value="refill">Refill</v-tab>
@@ -37,6 +24,8 @@
 
       <v-card-text class="flex-grow-1 overflow-y-auto bg-grey-lighten-4 pa-0">
         <v-window v-model="activeTab">
+
+          <!-- STREAMING_CHUNK: Setting up the schedule tab... -->
           <v-window-item value="schedule">
             <div class="pa-3">
               <v-card color="primary" variant="tonal" class="mb-3 rounded-lg">
@@ -53,12 +42,8 @@
 
               <v-list lines="two" class="bg-transparent">
                 <v-list-subheader>Medication schedule</v-list-subheader>
-                <v-list-item
-                  v-for="med in mockSchedule"
-                  :key="med.id"
-                  :title="med.name"
-                  :subtitle="med.time + ' - ' + med.dosage"
-                >
+                <v-list-item v-for="med in mockSchedule" :key="med.id" :title="med.name"
+                  :subtitle="med.time + ' - ' + med.dosage">
                   <template #prepend>
                     <v-avatar color="blue-lighten-4">
                       <v-icon color="blue-darken-2">mdi-pill</v-icon>
@@ -72,89 +57,49 @@
             </div>
           </v-window-item>
 
+          <!-- STREAMING_CHUNK: Setting up the refill requests tab... -->
           <v-window-item value="refill">
             <v-container>
-              <v-alert
-                v-if="refillSuccessMessage"
-                type="success"
-                variant="tonal"
-                class="mb-4"
-                closable
-                density="compact"
-                @click:close="refillSuccessMessage = ''"
-              >
+              <v-alert v-if="refillSuccessMessage" type="success" variant="tonal" class="mb-4" closable
+                density="compact" @click:close="refillSuccessMessage = ''">
                 {{ refillSuccessMessage }}
               </v-alert>
 
-              <v-alert
-                v-if="dbStatusMessage"
-                :type="dbStatusMessage.includes('success') ? 'success' : 'info'"
-                variant="tonal"
-                class="mb-4"
-                density="compact"
-              >
+              <v-alert v-if="dbStatusMessage" :type="dbStatusMessage.includes('success') ? 'success' : 'info'"
+                variant="tonal" class="mb-4" density="compact">
                 {{ dbStatusMessage }}
               </v-alert>
 
               <p class="text-body-2 mb-4 text-grey-darken-2">
                 Select a medication from your active prescriptions to request a refill from the pharmacy.
               </p>
-              <v-select
-                v-model="refillSelection"
-                :items="mockSchedule"
-                item-title="name"
-                item-value="name"
-                label="Select Medication"
-                variant="outlined"
-                density="comfortable"
-              />
+              <v-select v-model="refillSelection" :items="mockSchedule" item-title="name" item-value="name"
+                label="Select Medication" variant="outlined" density="comfortable" />
 
-              <v-textarea
-                v-model="refillNotes"
-                label="Additional Notes (Optional)"
-                variant="outlined"
-                density="comfortable"
-                rows="3"
-              />
+              <v-textarea v-model="refillNotes" label="Additional Notes (Optional)" variant="outlined"
+                density="comfortable" rows="3" />
 
-              <v-btn
-                color="primary"
-                block
-                class="mb-3"
-                @click="submitRefill"
-                :loading="isSubmitting"
-                :disabled="!refillSelection || isSubmitting"
-              >
+              <v-btn color="primary" block class="mb-3" @click="submitRefill" :loading="isSubmitting"
+                :disabled="!refillSelection || isSubmitting">
                 {{ isSubmitting ? 'Submitting...' : 'Submit Request' }}
               </v-btn>
 
-              <v-btn
-                color="secondary"
-                variant="outlined"
-                block
-                @click="testRealtimeDatabase"
-                :loading="isSubmitting"
-              >
+              <v-btn color="secondary" variant="outlined" block @click="testRealtimeDatabase" :loading="isSubmitting">
                 Test Realtime Database
               </v-btn>
             </v-container>
           </v-window-item>
 
+          <!-- STREAMING_CHUNK: Setting up the active chat window... -->
           <v-window-item value="chat">
             <div class="chat-container d-flex flex-column h-100">
-              <div ref="chatMessagesContainer" class="chat-messages flex-grow-1 pa-3 overflow-y-auto" style="height: 330px;">
-                <div
-                  v-for="msg in chatMessages"
-                  :key="msg.id"
-                  :class="['d-flex mb-3', msg.sender === 'patient' ? 'justify-end' : 'justify-start']"
-                >
-                  <v-card
-                    :color="msg.sender === 'patient' ? 'primary' : 'white'"
+              <div ref="chatMessagesContainer" class="chat-messages flex-grow-1 pa-3 overflow-y-auto"
+                style="height: 330px;">
+                <div v-for="msg in chatMessages" :key="msg.id"
+                  :class="['d-flex mb-3', msg.sender === 'patient' ? 'justify-end' : 'justify-start']">
+                  <v-card :color="msg.sender === 'patient' ? 'primary' : 'white'"
                     :class="['pa-2 px-3 text-body-2', msg.sender === 'patient' ? 'text-white' : 'text-black']"
-                    elevation="1"
-                    max-width="80%"
-                    rounded="lg"
-                  >
+                    elevation="1" max-width="80%" rounded="lg">
                     <div v-if="msg.sender !== 'patient'" class="text-caption mb-1 text-medium-emphasis">
                       {{ assistantTitle }}
                     </div>
@@ -166,22 +111,16 @@
               <v-divider />
 
               <div class="chat-input pa-2 bg-white border-t">
-                <v-text-field
-                  v-model="newMessage"
-                  append-inner-icon="mdi-send"
-                  variant="outlined"
-                  density="compact"
-                  hide-details
-                  placeholder="Type a message..."
-                  @click:append-inner="sendMessage"
-                  @keyup.enter.prevent="sendMessage"
-                />
+                <v-text-field v-model="newMessage" append-inner-icon="mdi-send" variant="outlined" density="compact"
+                  hide-details placeholder="Type a message..." @click:append-inner="sendMessage"
+                  @keyup.enter.prevent="sendMessage" />
               </div>
             </div>
           </v-window-item>
         </v-window>
       </v-card-text>
     </v-card>
+
   </v-expand-transition>
 </template>
 

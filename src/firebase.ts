@@ -17,6 +17,9 @@ let database: Database | null = null
 if (firebaseConfig.projectId && firebaseConfig.databaseURL) {
   const app = initializeApp(firebaseConfig)
   database = getDatabase(app)
+  console.log('✅ Firebase initialized successfully with project:', firebaseConfig.projectId)
+} else {
+  console.warn('⚠️ Firebase initialization skipped: Missing projectId or databaseURL in environment variables.')
 }
 
 export const realtimeDb = database
