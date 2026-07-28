@@ -86,6 +86,16 @@
                 {{ refillSuccessMessage }}
               </v-alert>
 
+              <v-alert
+                v-if="dbStatusMessage"
+                :type="dbStatusMessage.includes('success') ? 'success' : 'info'"
+                variant="tonal"
+                class="mb-4"
+                density="compact"
+              >
+                {{ dbStatusMessage }}
+              </v-alert>
+
               <p class="text-body-2 mb-4 text-grey-darken-2">
                 Select a medication from your active prescriptions to request a refill from the pharmacy.
               </p>
@@ -110,11 +120,22 @@
               <v-btn
                 color="primary"
                 block
+                class="mb-3"
                 @click="submitRefill"
                 :loading="isSubmitting"
                 :disabled="!refillSelection || isSubmitting"
               >
                 {{ isSubmitting ? 'Submitting...' : 'Submit Request' }}
+              </v-btn>
+
+              <v-btn
+                color="secondary"
+                variant="outlined"
+                block
+                @click="testRealtimeDatabase"
+                :loading="isSubmitting"
+              >
+                Test Realtime Database
               </v-btn>
             </v-container>
           </v-window-item>
@@ -166,7 +187,7 @@
 
 <script lang="ts" setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { pushValue } from '@/firebase'
+import { isFirebaseEnabled, pushValue } from '@/firebase'
 import { useTicketStore } from '@/stores/ticketStore'
 import { slugify } from '@/utils/liveSupport'
 
@@ -210,6 +231,7 @@ const refillSelection = ref<string | null>(null)
 const refillNotes = ref('')
 const isSubmitting = ref(false)
 const refillSuccessMessage = ref('')
+const dbStatusMessage = ref('')
 
 const submitRefill = async () => {
   if (!refillSelection.value) return
@@ -230,8 +252,36 @@ const submitRefill = async () => {
     refillSelection.value = null
     refillNotes.value = ''
     activeTab.value = 'schedule'
+    dbStatusMessage.value = 'Refill request was written to Firebase.'
   } catch (error) {
     console.error('Firebase write error:', error)
+    dbStatusMessage.value = 'Firebase write failed. Check your console and Firebase config.'
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+const testRealtimeDatabase = async () => {
+  isSubmitting.value = true
+
+  try {
+    if (!isFirebaseEnabled) {
+      dbStatusMessage.value = 'Firebase is not enabled. Check your environment variables.'
+      return
+    }
+
+    await pushValue('tickets', {
+      type: 'test',
+      source: 'widget-test',
+      patientName: props.patientName,
+      message: 'Realtime Database smoke test',
+      timestamp: Date.now(),
+    })
+
+    dbStatusMessage.value = 'Database test write succeeded. Check the Firebase console under tickets.'
+  } catch (error) {
+    console.error('Firebase test error:', error)
+    dbStatusMessage.value = 'Database test write failed. Check your rules and config.'
   } finally {
     isSubmitting.value = false
   }
