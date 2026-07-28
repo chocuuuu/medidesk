@@ -1,23 +1,20 @@
 import { initializeApp, type FirebaseOptions } from 'firebase/app'
 import { getDatabase, onValue, push, ref, set, update, type Database } from 'firebase/database'
 
-const projectId = 'medidesk-a9bb2'
-const databaseURL = `https://${projectId}-default-rtdb.firebaseio.com`
-
 const firebaseConfig: FirebaseOptions = {
-  apiKey: 'AIzaSyB1ymRMxAUcPKEBezMIQI19VLMGDHqHpSo',
-  authDomain: 'medidesk-a9bb2.firebaseapp.com',
-  projectId,
-  databaseURL,
-  storageBucket: 'medidesk-a9bb2.firebasestorage.app',
-  messagingSenderId: '336185090085',
-  appId: '1:336185090085:web:6f330ac271b25289dc9fcc',
-  measurementId: 'G-1LL8PDHJ9Q',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || '',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || '',
 }
 
 let database: Database | null = null
 
-if (projectId && databaseURL) {
+if (firebaseConfig.projectId && firebaseConfig.databaseURL) {
   const app = initializeApp(firebaseConfig)
   database = getDatabase(app)
 }
