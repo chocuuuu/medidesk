@@ -1,86 +1,129 @@
 <template>
-  <v-container class="py-4" max-width="960">
-    <v-row justify="center">
-      <v-col cols="12" md="10">
-        <v-card class="rounded-xl elevation-2 pa-6">
-          <div class="d-flex flex-column flex-md-row justify-space-between align-start align-md-center mb-6 gap-4">
-            <div>
-              <v-chip color="primary" class="mb-4" prepend-icon="mdi-account-cog">
-                Agent workspace
-              </v-chip>
-              <h2 class="text-h4 font-weight-bold mb-2">Care operations dashboard</h2>
-              <p class="text-body-1 text-medium-emphasis mb-0">
-                Monitor the queue, review incoming messages, and keep patient follow-ups moving smoothly.
-              </p>
-            </div>
-            <v-btn color="primary" prepend-icon="mdi-plus" variant="flat">
-              New case
-            </v-btn>
+  <v-app>
+    <v-navigation-drawer permanent app width="260" color="white" class="border-r">
+      <div class="d-flex align-center pa-4">
+        <v-avatar color="primary" class="me-3">
+          <v-icon color="white">mdi-pill</v-icon>
+        </v-avatar>
+        <div>
+          <div class="text-h6 font-weight-bold">MediDesk</div>
+          <div class="text-caption text-medium-emphasis">Agent workspace</div>
+        </div>
+      </div>
+
+      <v-divider />
+
+      <v-list density="compact" nav>
+        <v-list-item prepend-icon="mdi-ticket-account" title="Live Queue" value="queue" active color="primary" />
+        <v-list-item prepend-icon="mdi-account-group" title="Patient Directory" value="patients" />
+        <v-list-item prepend-icon="mdi-history" title="History" value="history" />
+        <v-list-item prepend-icon="mdi-cog" title="System Settings" value="settings" />
+      </v-list>
+    </v-navigation-drawer>
+
+    <v-app-bar elevation="1" color="white" app>
+      <v-app-bar-title class="text-subtitle-1 font-weight-bold text-grey-darken-2">
+        Active Workspace
+      </v-app-bar-title>
+
+      <v-spacer />
+
+      <div class="d-flex align-center mr-6">
+        <span class="mr-3 text-body-2 font-weight-medium" :class="isOnline ? 'text-success' : 'text-grey'">
+          {{ isOnline ? 'Status: ONLINE' : 'Status: OFFLINE' }}
+        </span>
+        <v-switch v-model="isOnline" color="success" hide-details density="compact" inset />
+      </div>
+    </v-app-bar>
+
+    <v-main class="bg-grey-lighten-4" style="min-height: 100vh;">
+      <v-container fluid class="pa-6">
+        <v-row>
+          <v-col cols="12">
+            <v-card elevation="2" class="rounded-lg border">
+              <v-card-title class="d-flex align-center pa-4 bg-white">
+                <v-icon color="primary" class="mr-2">mdi-inbox-multiple</v-icon>
+                Active Support Tickets
+                <v-spacer />
+                <v-text-field
+                  v-model="search"
+                  prepend-inner-icon="mdi-magnify"
+                  density="compact"
+                  label="Search patients..."
+                  variant="outlined"
+                  hide-details
+                  max-width="300"
+                />
+              </v-card-title>
+
+              <v-divider />
+
+              <v-data-table :headers="headers" :items="tickets" :search="search" hover>
+                <template #item.type="{ item }">
+                  <v-chip :color="item.type === 'refill' ? 'blue-darken-1' : 'purple-darken-1'" size="small" variant="flat">
+                    <v-icon start size="small">{{ item.type === 'refill' ? 'mdi-pill' : 'mdi-chat' }}</v-icon>
+                    {{ item.type.toUpperCase() }}
+                  </v-chip>
+                </template>
+
+                <template #item.status="{ item }">
+                  <v-chip :color="item.status === 'pending' ? 'warning' : 'success'" size="small" variant="tonal">
+                    {{ item.status.toUpperCase() }}
+                  </v-chip>
+                </template>
+
+                <template #item.actions="{ item }">
+                  <v-btn size="small" variant="text" color="primary" @click="openTicket(item)">
+                    Review
+                  </v-btn>
+                </template>
+              </v-data-table>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-container>
+    </v-main>
+
+    <v-dialog v-model="detailsModal" max-width="500">
+      <v-card v-if="selectedTicket" rounded="lg">
+        <v-toolbar color="primary" density="compact">
+          <v-toolbar-title class="text-subtitle-1">
+            Ticket ID: {{ selectedTicket.id }}
+          </v-toolbar-title>
+          <v-btn icon="mdi-close" variant="text" @click="detailsModal = false" />
+        </v-toolbar>
+
+        <v-card-text class="pa-6">
+          <div class="d-flex justify-space-between align-center mb-4">
+            <h3 class="text-h6 mb-0">{{ selectedTicket.patientName }}</h3>
+            <v-chip :color="selectedTicket.type === 'refill' ? 'blue-darken-1' : 'purple-darken-1'" size="small" variant="flat">
+              {{ selectedTicket.type.toUpperCase() }}
+            </v-chip>
           </div>
 
-          <v-row>
-            <v-col cols="12" md="4">
-              <v-card color="primary" variant="tonal" rounded="lg" class="h-100">
-                <v-card-text>
-                  <div class="text-caption text-uppercase">Open queue</div>
-                  <div class="text-h5 font-weight-bold mt-2">{{ queueCount }}</div>
-                  <div class="text-body-2 mt-1">Patients waiting for review</div>
-                </v-card-text>
-              </v-card>
-            </v-col>
-
-            <v-col cols="12" md="4">
-              <v-card color="success" variant="tonal" rounded="lg" class="h-100">
-                <v-card-text>
-                  <div class="text-caption text-uppercase">Resolved today</div>
-                  <div class="text-h5 font-weight-bold mt-2">{{ resolvedCount }}</div>
-                  <div class="text-body-2 mt-1">Cases completed this shift</div>
-                </v-card-text>
-              </v-card>
-            </v-col>
-
-            <v-col cols="12" md="4">
-              <v-card color="amber" variant="tonal" rounded="lg" class="h-100">
-                <v-card-text>
-                  <div class="text-caption text-uppercase">Status</div>
-                  <div class="text-h5 font-weight-bold mt-2">{{ isOnline ? 'Online' : 'Away' }}</div>
-                  <div class="text-body-2 mt-1">Live support availability</div>
-                </v-card-text>
-              </v-card>
-            </v-col>
-          </v-row>
-
-          <v-card variant="outlined" rounded="lg" class="mt-6">
-            <v-card-title class="d-flex align-center justify-space-between">
-              <span>Active support queue</span>
-              <v-chip color="primary" size="small">{{ queueCount }} active</v-chip>
-            </v-card-title>
-            <v-card-text class="px-2 pb-2">
-              <v-list lines="two">
-                <v-list-item
-                  v-for="ticket in tickets"
-                  :key="ticket.id"
-                  :title="ticket.patientName"
-                  :subtitle="`${ticket.preview} • ${ticket.eta}`"
-                >
-                  <template #prepend>
-                    <v-avatar color="primary" variant="tonal">
-                      <v-icon>{{ ticket.type === 'refill' ? 'mdi-pill' : 'mdi-chat' }}</v-icon>
-                    </v-avatar>
-                  </template>
-                  <template #append>
-                    <v-chip :color="ticket.status === 'pending' ? 'warning' : 'success'" size="small" variant="tonal">
-                      {{ ticket.status }}
-                    </v-chip>
-                  </template>
-                </v-list-item>
-              </v-list>
-            </v-card-text>
+          <p class="text-caption text-grey-darken-1 mb-2">Message Preview:</p>
+          <v-card color="grey-lighten-4" class="pa-4 mb-6 border" elevation="0">
+            <p class="text-body-1 mb-0">{{ selectedTicket.previewText }}</p>
           </v-card>
-        </v-card>
-      </v-col>
-    </v-row>
-  </v-container>
+
+          <v-select
+            v-model="selectedTicket.status"
+            :items="['pending', 'resolved']"
+            label="Update Ticket Status"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+          />
+        </v-card-text>
+
+        <v-card-actions class="pa-4 pt-0 bg-grey-lighten-5 border-top">
+          <v-spacer />
+          <v-btn variant="text" color="grey-darken-2" @click="detailsModal = false">Cancel</v-btn>
+          <v-btn color="primary" variant="flat" @click="detailsModal = false" class="px-6">Save & Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </v-app>
 </template>
 
 <script lang="ts" setup>
@@ -88,41 +131,58 @@ import { computed, ref } from 'vue'
 
 interface TicketItem {
   id: number
+  ticketId: string
   patientName: string
   type: 'refill' | 'chat'
-  status: 'pending' | 'review' | 'resolved'
-  preview: string
-  eta: string
+  status: 'pending' | 'resolved'
+  previewText: string
 }
+
+const headers = [
+  { title: 'Ticket ID', key: 'ticketId' },
+  { title: 'Type', key: 'type' },
+  { title: 'Patient Name', key: 'patientName' },
+  { title: 'Status', key: 'status' },
+  { title: 'Actions', key: 'actions', sortable: false },
+]
 
 const tickets = ref<TicketItem[]>([
   {
     id: 1,
+    ticketId: 'TKT-001',
     patientName: 'Jordan Lee',
     type: 'refill',
     status: 'pending',
-    preview: 'Medication refill request for Lisinopril',
-    eta: 'Next update in 10 min',
+    previewText: 'Please refill my Lisinopril prescription before Friday.',
   },
   {
     id: 2,
+    ticketId: 'TKT-002',
     patientName: 'Alicia Gomez',
     type: 'chat',
-    status: 'review',
-    preview: 'Needs clarification on dosing schedule',
-    eta: 'Priority follow-up',
+    status: 'pending',
+    previewText: 'I have a question about my medication timing and dosage.',
   },
   {
     id: 3,
+    ticketId: 'TKT-003',
     patientName: 'Darnell Brooks',
     type: 'refill',
     status: 'resolved',
-    preview: 'Pharmacy confirmed refill shipment',
-    eta: 'Completed 2 min ago',
+    previewText: 'The pharmacist confirmed the refill and shipment is on the way.',
   },
 ])
 
 const isOnline = ref(true)
+const search = ref('')
+const detailsModal = ref(false)
+const selectedTicket = ref<TicketItem | null>(null)
+
+const openTicket = (item: TicketItem) => {
+  selectedTicket.value = item
+  detailsModal.value = true
+}
+
 const queueCount = computed(() => tickets.value.filter((ticket) => ticket.status !== 'resolved').length)
 const resolvedCount = computed(() => tickets.value.filter((ticket) => ticket.status === 'resolved').length)
 </script>
