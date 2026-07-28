@@ -164,6 +164,8 @@
 
 <script lang="ts" setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useTicketStore } from '@/stores/ticketStore'
+import { slugify } from '@/utils/liveSupport'
 
 interface Props {
   patientName?: string
@@ -179,6 +181,8 @@ const props = withDefaults(defineProps<Props>(), {
 
 type TabValue = 'schedule' | 'refill' | 'chat'
 
+const ticketStore = useTicketStore()
+const patientId = computed(() => slugify(`${props.patientName}-${props.assistantTitle}`))
 const isOpen = ref(false)
 const activeTab = ref<TabValue>('schedule')
 
@@ -204,33 +208,39 @@ const refillNotes = ref('')
 const isSubmitting = ref(false)
 const refillSuccessMessage = ref('')
 
-const submitRefill = () => {
+const submitRefill = async () => {
   if (!refillSelection.value) return
 
   isSubmitting.value = true
 
-  setTimeout(() => {
-    isSubmitting.value = false
+  try {
+    await ticketStore.submitRefill({
+      patientId: patientId.value,
+      patientName: props.patientName,
+      medication: refillSelection.value,
+      notes: refillNotes.value,
+    })
+
     refillSuccessMessage.value = `Refill request sent for ${refillSelection.value}.`
     refillSelection.value = null
     refillNotes.value = ''
     activeTab.value = 'schedule'
-  }, 1000)
+  } finally {
+    isSubmitting.value = false
+  }
 }
 
 interface ChatMessage {
-  id: number
-  sender: 'system' | 'patient'
+  id: string
+  sender: 'system' | 'patient' | 'agent'
   text: string
 }
 
-const chatMessages = ref<ChatMessage[]>([
-  {
-    id: 1,
-    sender: 'system',
-    text: `Hello ${props.patientName}! Welcome to MediDesk Support. How can we help with your medications today?`,
-  },
-])
+const chatMessages = computed<ChatMessage[]>(() => ticketStore.getChatMessages(patientId.value).map((msg) => ({
+  id: msg.id,
+  sender: msg.sender,
+  text: msg.text,
+})))
 const newMessage = ref('')
 const chatMessagesContainer = ref<HTMLElement | null>(null)
 
@@ -247,30 +257,18 @@ watch(chatMessages, () => {
 }, { deep: true })
 
 onMounted(() => {
+  ticketStore.connect()
+  ticketStore.ensurePatientChat(patientId.value, props.patientName)
   scrollToBottom()
 })
 
-const sendMessage = () => {
+const sendMessage = async () => {
   const trimmedMessage = newMessage.value.trim()
   if (!trimmedMessage) return
 
-  chatMessages.value.push({
-    id: Date.now(),
-    sender: 'patient',
-    text: trimmedMessage,
-  })
-
+  await ticketStore.sendPatientMessage(patientId.value, props.patientName, trimmedMessage)
   newMessage.value = ''
   scrollToBottom()
-
-  setTimeout(() => {
-    chatMessages.value.push({
-      id: Date.now(),
-      sender: 'system',
-      text: `I’ve received your message about "${trimmedMessage}". A care coordinator will review this and respond shortly.`,
-    })
-    scrollToBottom()
-  }, 900)
 }
 </script>
 

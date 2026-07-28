@@ -84,11 +84,11 @@
       </v-container>
     </v-main>
 
-    <v-dialog v-model="detailsModal" max-width="500">
+    <v-dialog v-model="detailsModal" max-width="600">
       <v-card v-if="selectedTicket" rounded="lg">
         <v-toolbar color="primary" density="compact">
           <v-toolbar-title class="text-subtitle-1">
-            Ticket ID: {{ selectedTicket.id }}
+            Ticket ID: {{ selectedTicket.ticketId }}
           </v-toolbar-title>
           <v-btn icon="mdi-close" variant="text" @click="detailsModal = false" />
         </v-toolbar>
@@ -113,13 +113,33 @@
             variant="outlined"
             density="comfortable"
             hide-details
+            class="mb-4"
+          />
+
+          <div class="mb-4">
+            <div class="text-caption text-grey-darken-1 mb-2">Conversation</div>
+            <v-card color="grey-lighten-5" class="pa-3 border" elevation="0">
+              <div v-for="message in selectedTicketMessages" :key="message.id" class="mb-3">
+                <div class="text-caption font-weight-bold text-capitalize">{{ message.sender }}</div>
+                <div class="text-body-2">{{ message.text }}</div>
+              </div>
+            </v-card>
+          </div>
+
+          <v-textarea
+            v-model="agentReply"
+            label="Reply to the patient"
+            variant="outlined"
+            rows="3"
+            density="comfortable"
           />
         </v-card-text>
 
         <v-card-actions class="pa-4 pt-0 bg-grey-lighten-5 border-top">
           <v-spacer />
           <v-btn variant="text" color="grey-darken-2" @click="detailsModal = false">Cancel</v-btn>
-          <v-btn color="primary" variant="flat" @click="detailsModal = false" class="px-6">Save & Close</v-btn>
+          <v-btn color="primary" variant="flat" @click="saveTicket" class="px-6">Save & Close</v-btn>
+          <v-btn color="secondary" variant="flat" @click="sendAgentReply" class="px-6">Send Reply</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -127,16 +147,10 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useTicketStore, type TicketRecord } from '@/stores/ticketStore'
 
-interface TicketItem {
-  id: number
-  ticketId: string
-  patientName: string
-  type: 'refill' | 'chat'
-  status: 'pending' | 'resolved'
-  previewText: string
-}
+const ticketStore = useTicketStore()
 
 const headers = [
   { title: 'Ticket ID', key: 'ticketId' },
@@ -146,43 +160,35 @@ const headers = [
   { title: 'Actions', key: 'actions', sortable: false },
 ]
 
-const tickets = ref<TicketItem[]>([
-  {
-    id: 1,
-    ticketId: 'TKT-001',
-    patientName: 'Jordan Lee',
-    type: 'refill',
-    status: 'pending',
-    previewText: 'Please refill my Lisinopril prescription before Friday.',
-  },
-  {
-    id: 2,
-    ticketId: 'TKT-002',
-    patientName: 'Alicia Gomez',
-    type: 'chat',
-    status: 'pending',
-    previewText: 'I have a question about my medication timing and dosage.',
-  },
-  {
-    id: 3,
-    ticketId: 'TKT-003',
-    patientName: 'Darnell Brooks',
-    type: 'refill',
-    status: 'resolved',
-    previewText: 'The pharmacist confirmed the refill and shipment is on the way.',
-  },
-])
-
+const tickets = computed(() => ticketStore.tickets.filter((ticket) => ticket.status !== 'resolved'))
 const isOnline = ref(true)
 const search = ref('')
 const detailsModal = ref(false)
-const selectedTicket = ref<TicketItem | null>(null)
+const selectedTicket = ref<TicketRecord | null>(null)
+const agentReply = ref('')
+const selectedTicketMessages = computed(() => selectedTicket.value ? ticketStore.getChatMessages(selectedTicket.value.patientId) : [])
 
-const openTicket = (item: TicketItem) => {
+const openTicket = (item: TicketRecord) => {
   selectedTicket.value = item
+  agentReply.value = ''
   detailsModal.value = true
 }
 
-const queueCount = computed(() => tickets.value.filter((ticket) => ticket.status !== 'resolved').length)
-const resolvedCount = computed(() => tickets.value.filter((ticket) => ticket.status === 'resolved').length)
+const saveTicket = async () => {
+  if (!selectedTicket.value) return
+
+  await ticketStore.updateTicketStatus(selectedTicket.value.id, selectedTicket.value.status)
+  detailsModal.value = false
+}
+
+const sendAgentReply = async () => {
+  if (!selectedTicket.value || !agentReply.value.trim()) return
+
+  await ticketStore.sendAgentReply(selectedTicket.value.patientId, agentReply.value.trim())
+  agentReply.value = ''
+}
+
+onMounted(() => {
+  ticketStore.connect()
+})
 </script>
