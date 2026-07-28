@@ -1,0 +1,23 @@
+mutation SeedData @transaction @auth(expr: "auth.token.admin == true") {
+  organization_insertMany(data: [
+    { id: "00000000-0000-0000-0000-000000000001", name: "Acme Corp", subscriptionTier: "Enterprise" },
+    { id: "00000000-0000-0000-0000-000000000002", name: "Beta Tech", subscriptionTier: "Pro" }
+  ])
+  user_insertMany(data: [
+    { id: "10000000-0000-0000-0000-000000000001", email: "alice@acme.com", role: "Admin", organizationId: "00000000-0000-0000-0000-000000000001" },
+    { id: "10000000-0000-0000-0000-000000000002", email: "bob@acme.com", role: "Agent", organizationId: "00000000-0000-0000-0000-000000000001" },
+    { id: "10000000-0000-0000-0000-000000000003", email: "charlie@beta.com", role: "User", organizationId: "00000000-0000-0000-0000-000000000002" }
+  ])
+  ticket_insertMany(data: [
+    { id: "20000000-0000-0000-0000-000000000001", title: "Login issue", status: "Open", createdAt: "2023-10-01T10:00:00Z", organizationId: "00000000-0000-0000-0000-000000000001", customerId: "10000000-0000-0000-0000-000000000003" },
+    { id: "20000000-0000-0000-0000-000000000002", title: "API latency", status: "In Progress", createdAt: "2023-10-02T11:00:00Z", organizationId: "00000000-0000-0000-0000-000000000001", customerId: "10000000-0000-0000-0000-000000000001" }
+  ])
+  message_insertMany(data: [
+    { content: "Please help with login", senderId: "10000000-0000-0000-0000-000000000003", ticketId: "20000000-0000-0000-0000-000000000001", timestamp: "2023-10-01T10:05:00Z" },
+    { content: "We are looking into it", senderId: "10000000-0000-0000-0000-000000000001", ticketId: "20000000-0000-0000-0000-000000000001", timestamp: "2023-10-01T10:10:00Z" }
+  ])
+  widgetConfig_insertMany(data: [
+    { primaryColor: "#FF5733", widgetPosition: "bottom-right", organizationId: "00000000-0000-0000-0000-000000000001" },
+    { primaryColor: "#33FF57", widgetPosition: "bottom-left", organizationId: "00000000-0000-0000-0000-000000000002" }
+  ])
+}

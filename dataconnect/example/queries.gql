@@ -1,0 +1,129 @@
+mutation CreateOrganization {
+  organization_insert(data: {name: "Tech Corp", subscriptionTier: "Enterprise"})
+}
+
+query GetOrganization($id: UUID!) @auth(level: USER) {
+  organization(id: $id) {
+    name
+    subscriptionTier
+  }
+}
+
+query ListOrganizations @auth(level: PUBLIC, insecureReason: "Organizations are public entities") {
+  organizations {
+    id
+    name
+  }
+}
+
+mutation UpdateOrganization($id: UUID!, $name: String) @auth(level: USER) {
+  organization_update(id: $id, data: {name: $name})
+}
+
+mutation DeleteOrganization($id: UUID!) @auth(level: USER) {
+  organization_delete(id: $id)
+}
+
+mutation CreateUser($email: String!, $role: String!, $orgId: UUID!) @auth(level: USER) {
+  user_insert(data: {email: $email, role: $role, organizationId: $orgId})
+}
+
+query GetUser($id: UUID!) @auth(level: USER) {
+  user(id: $id) {
+    email
+    displayName
+  }
+}
+
+query ListUsers @auth(level: USER) {
+  users {
+    email
+    role
+  }
+}
+
+mutation UpdateUser($id: UUID!, $displayName: String) @auth(level: USER) {
+  user_update(id: $id, data: {displayName: $displayName})
+}
+
+mutation DeleteUser($id: UUID!) @auth(level: USER) {
+  user_delete(id: $id)
+}
+
+mutation CreateTicket($title: String!, $status: String!, $orgId: UUID!, $custId: UUID!) @auth(level: USER) {
+  ticket_insert(data: {title: $title, status: $status, organizationId: $orgId, customerId: $custId, createdAt_expr: "request.time"})
+}
+
+query GetTicket($id: UUID!) @auth(level: USER) {
+  ticket(id: $id) {
+    title
+    status
+  }
+}
+
+query ListTickets @auth(level: USER) {
+  tickets {
+    title
+    createdAt
+  }
+}
+
+mutation UpdateTicket($id: UUID!, $status: String) @auth(level: USER) {
+  ticket_update(id: $id, data: {status: $status})
+}
+
+mutation DeleteTicket($id: UUID!) @auth(level: USER) {
+  ticket_delete(id: $id)
+}
+
+mutation CreateMessage($content: String!, $senderId: UUID!, $ticketId: UUID!) @auth(level: USER) {
+  message_insert(data: {content: $content, senderId: $senderId, ticketId: $ticketId, timestamp_expr: "request.time"})
+}
+
+query GetMessage($id: UUID!) @auth(level: USER) {
+  message(id: $id) {
+    content
+    timestamp
+  }
+}
+
+query ListMessages @auth(level: USER) {
+  messages {
+    content
+    sender { email }
+  }
+}
+
+mutation UpdateMessage($id: UUID!, $content: String) @auth(level: USER) {
+  message_update(id: $id, data: {content: $content})
+}
+
+mutation DeleteMessage($id: UUID!) @auth(level: USER) {
+  message_delete(id: $id)
+}
+
+mutation CreateWidget($pos: String!, $color: String!, $orgId: UUID!) @auth(level: USER) {
+  widgetConfig_insert(data: {widgetPosition: $pos, primaryColor: $color, organizationId: $orgId})
+}
+
+query GetWidget($id: UUID!) @auth(level: USER) {
+  widgetConfig(id: $id) {
+    primaryColor
+    widgetPosition
+  }
+}
+
+query ListWidgets @auth(level: USER) {
+  widgetConfigs {
+    widgetPosition
+    primaryColor
+  }
+}
+
+mutation UpdateWidget($id: UUID!, $color: String) @auth(level: USER) {
+  widgetConfig_update(id: $id, data: {primaryColor: $color})
+}
+
+mutation DeleteWidget($id: UUID!) @auth(level: USER) {
+  widgetConfig_delete(id: $id)
+}

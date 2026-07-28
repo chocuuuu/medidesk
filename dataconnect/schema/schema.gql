@@ -1,0 +1,38 @@
+type Organization @table {
+  name: String!
+  subscriptionTier: String!
+  brandingConfig: String
+}
+
+type User @table {
+  email: String!
+  role: String!
+  displayName: String
+  avatarUrl: String
+  organization: Organization!
+}
+
+type Ticket @table {
+  title: String!
+  status: String!
+  createdAt: Timestamp!
+  priority: String
+  organization: Organization!
+  customer: User!
+}
+
+type Message @table {
+  content: String!
+  sender: User!
+  timestamp: Timestamp!
+  attachmentUrl: String
+  ticket: Ticket!
+}
+
+type WidgetConfig @table {
+  primaryColor: String!
+  widgetPosition: String!
+  welcomeMessage: String
+  showOfflineStatus: Boolean
+  organization: Organization!
+}
