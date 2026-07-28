@@ -14,13 +14,13 @@
   <v-expand-transition>
     <v-card
       v-if="isOpen"
-      class="elevation-10 d-flex flex-column position-fixed"
+      class="elevation-10 d-flex flex-column position-fixed border"
       width="350"
       height="500"
       rounded="xl"
-      style="bottom: 90px; right: 24px; z-index: 9999;"
+      style="bottom: 90px; right: 24px; z-index: 9999; background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);"
     >
-      <v-toolbar color="primary" density="compact" class="flex-grow-0">
+      <v-toolbar color="primary" density="compact" class="flex-grow-0 rounded-t-xl">
         <v-toolbar-title class="d-flex flex-column">
           <span class="text-subtitle-1 font-weight-bold">{{ assistantTitle }}</span>
           <span class="text-caption text-white/80">{{ assistantSubtitle }}</span>
@@ -142,7 +142,7 @@
 
               <v-divider />
 
-              <div class="chat-input pa-2 bg-white">
+              <div class="chat-input pa-2 bg-white border-t">
                 <v-text-field
                   v-model="newMessage"
                   append-inner-icon="mdi-send"

@@ -40,7 +40,7 @@
       <v-container fluid class="pa-6">
         <v-row>
           <v-col cols="12">
-            <v-card elevation="2" class="rounded-lg border">
+            <v-card elevation="1" rounded="lg" class="border" style="background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);">
               <v-card-title class="d-flex align-center pa-4 bg-white">
                 <v-icon color="primary" class="mr-2">mdi-inbox-multiple</v-icon>
                 Active Support Tickets
