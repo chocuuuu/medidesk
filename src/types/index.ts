@@ -1,8 +1,8 @@
 // These interfaces define exactly what our data should look like.
 // This prevents bugs where we might accidentally misspell a property later.
 
-export interface Medication {
-  id: string;
+export interface MedicationItem {
+  id: number;
   name: string;
   dosage: string;
   time: string;
@@ -12,15 +12,19 @@ export interface Medication {
 export interface ChatMessage {
   id: string;
   text: string;
-  sender: 'patient' | 'agent';
-  timestamp: number;
+  sender: 'system' | 'patient' | 'agent';
+  timestamp?: number;
 }
 
 export interface Ticket {
-  id: string;
-  type: 'refill' | 'chat';
+  ticketId: string;
+  type: 'refill' | 'chat' | 'test';
   patientName: string;
   status: 'pending' | 'resolved';
   timestamp: number;
-  previewText: string;
+  previewText?: string;
+  
+  // Optional fields specific to Refill requests
+  medication?: string;
+  notes?: string;
 }

@@ -1,5 +1,4 @@
 <template>
-  <!-- STREAMING_CHUNK: Rendering the floating action button... -->
   <v-btn
     icon="mdi-message-text"
     color="primary"
@@ -30,7 +29,6 @@
         <v-btn icon="mdi-close" variant="text" size="small" @click="isOpen = false" />
       </v-toolbar>
 
-      <!-- STREAMING_CHUNK: Adding tab navigation for different features... -->
       <v-tabs v-model="activeTab" bg-color="primary" density="compact" grow class="flex-grow-0">
         <v-tab value="schedule">Schedule</v-tab>
         <v-tab value="refill">Refill</v-tab>
@@ -40,7 +38,6 @@
       <v-card-text class="flex-grow-1 overflow-y-auto bg-grey-lighten-4 pa-0">
         <v-window v-model="activeTab">
           
-          <!-- STREAMING_CHUNK: Setting up the schedule tab... -->
           <v-window-item value="schedule">
             <div class="pa-3">
               <v-card color="primary" variant="tonal" class="mb-3 rounded-lg">
@@ -76,7 +73,6 @@
             </div>
           </v-window-item>
 
-          <!-- STREAMING_CHUNK: Setting up the refill requests tab... -->
           <v-window-item value="refill">
             <v-container>
               <v-alert
@@ -145,7 +141,6 @@
             </v-container>
           </v-window-item>
 
-          <!-- STREAMING_CHUNK: Setting up the active chat window... -->
           <v-window-item value="chat">
             <div class="chat-container d-flex flex-column h-100">
               <div ref="chatMessagesContainer" class="chat-messages flex-grow-1 pa-3 overflow-y-auto" style="height: 330px;">
@@ -192,11 +187,11 @@
 </template>
 
 <script lang="ts" setup>
-/* STREAMING_CHUNK: Initializing properties and patient variables... */
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { isFirebaseEnabled, pushValue } from '@/firebase';
 import { useTicketStore } from '@/stores/ticketStore';
 import { slugify } from '@/utils/liveSupport';
+import type { MedicationItem, ChatMessage } from '@/types';
 
 interface Props {
   patientName?: string;
@@ -217,15 +212,6 @@ const patientId = computed(() => slugify(`${props.patientName}-${props.assistant
 const isOpen = ref(false);
 const activeTab = ref<TabValue>('schedule');
 
-/* STREAMING_CHUNK: Defining medication schedule structure and reactive data... */
-interface MedicationItem {
-  id: number;
-  name: string;
-  time: string;
-  dosage: string;
-  takenToday: boolean;
-}
-
 const mockSchedule = ref<MedicationItem[]>([
   { id: 1, name: 'Lisinopril', time: '8:00 AM', dosage: '10mg', takenToday: true },
   { id: 2, name: 'Atorvastatin', time: '8:00 AM', dosage: '20mg', takenToday: false },
@@ -235,7 +221,6 @@ const mockSchedule = ref<MedicationItem[]>([
 const completedTodayCount = computed(() => mockSchedule.value.filter((med) => med.takenToday).length);
 const pendingTodayCount = computed(() => mockSchedule.value.length - completedTodayCount.value);
 
-/* STREAMING_CHUNK: Implementing the refill submittal logic... */
 const refillSelection = ref<string | null>(null);
 const refillNotes = ref('');
 const isSubmitting = ref(false);
@@ -270,7 +255,6 @@ const submitRefill = async () => {
   }
 };
 
-/* STREAMING_CHUNK: Testing connection and managing real-time chat... */
 const testRealtimeDatabase = async () => {
   isSubmitting.value = true;
 
@@ -296,12 +280,6 @@ const testRealtimeDatabase = async () => {
     isSubmitting.value = false;
   }
 };
-
-interface ChatMessage {
-  id: string;
-  sender: 'system' | 'patient' | 'agent';
-  text: string;
-}
 
 const chatMessages = computed<ChatMessage[]>(() => ticketStore.getChatMessages(patientId.value).map((msg) => ({
   id: msg.id,
@@ -340,7 +318,6 @@ const sendMessage = async () => {
 </script>
 
 <style scoped>
-/* STREAMING_CHUNK: Styling the chat container... */
 .chat-messages {
   scroll-behavior: smooth;
 }
