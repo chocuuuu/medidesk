@@ -1,61 +1,14 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { listenValue, pushValue, updateValue } from '@/firebase'
-import { buildChatMessage, buildRefillTicket, slugify, type ChatMessagePayload, type RefillTicketPayload } from '@/utils/liveSupport'
-
-export interface TicketRecord {
-  id: string
-  ticketId: string
-  patientId: string
-  patientName: string
-  type: 'refill' | 'chat'
-  status: 'pending' | 'resolved'
-  previewText: string
-  medication?: string
-  notes?: string
-  createdAt: string
-  updatedAt: string
-}
-
-interface ChatState {
-  [patientId: string]: ChatMessagePayload[]
-}
+import { ref, computed } from 'vue'
+import { listenValue, pushValue, updateValue, isFirebaseEnabled } from '@/firebase'
+import type { Ticket, ChatMessage } from '@/types'
 
 const STORAGE_KEY = 'medidesk-live-state'
 
-const defaultTickets: TicketRecord[] = [
-  {
-    id: 'seed-ticket-1',
-    ticketId: 'TKT-001',
-    patientId: 'jordan-lee',
-    patientName: 'Jordan Lee',
-    type: 'refill',
-    status: 'pending',
-    previewText: 'Please refill my Lisinopril prescription before Friday.',
-    medication: 'Lisinopril',
-    notes: 'Need it before Friday',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'seed-ticket-2',
-    ticketId: 'TKT-002',
-    patientId: 'alicia-gomez',
-    patientName: 'Alicia Gomez',
-    type: 'chat',
-    status: 'pending',
-    previewText: 'I have a question about my medication timing and dosage.',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-]
-
 const readFromStorage = () => {
   if (typeof window === 'undefined') return null
-
   const saved = window.localStorage.getItem(STORAGE_KEY)
   if (!saved) return null
-
   try {
     return JSON.parse(saved)
   } catch {
@@ -63,202 +16,147 @@ const readFromStorage = () => {
   }
 }
 
-const writeToStorage = (tickets: TicketRecord[], chats: ChatState) => {
+const writeToStorage = (tickets: Ticket[], chats: Record<string, ChatMessage[]>) => {
   if (typeof window === 'undefined') return
-
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ tickets, chats }))
 }
 
-export const useTicketStore = defineStore('ticketStore', () => {
-  const tickets = ref<TicketRecord[]>(defaultTickets)
-  const chats = ref<ChatState>({})
-  const connected = ref(false)
+export const useTicketStore = defineStore('tickets', () => {
+  // State
+  const tickets = ref<Ticket[]>([])
+  const chats = ref<Record<string, ChatMessage[]>>({})
+  const isInitialized = ref(false)
   const unsubscribeFns: Array<() => void> = []
+
+  // Getters (Computed properties in Setup Stores)
+  const activeTickets = computed(() => {
+    return tickets.value
+      .filter((t) => t.status === 'pending')
+      .sort((a, b) => b.timestamp - a.timestamp)
+  })
+
+  const getChatMessages = computed(() => {
+    return (patientId: string) => chats.value[patientId] || []
+  })
 
   const syncFromStorage = () => {
     const savedState = readFromStorage()
-    if (savedState?.tickets?.length) {
-      tickets.value = savedState.tickets
-    }
-    if (savedState?.chats) {
-      chats.value = savedState.chats
-    }
+    if (savedState?.tickets?.length) tickets.value = savedState.tickets
+    if (savedState?.chats) chats.value = savedState.chats
   }
 
-  const persist = () => {
-    writeToStorage(tickets.value, chats.value)
-  }
-
-  const ensurePatientChat = (patientId: string, patientName: string) => {
-    if (!chats.value[patientId]?.length) {
-      chats.value[patientId] = [
-        buildChatMessage('system', `Hello ${patientName}! Welcome to MediDesk Support. How can we help with your medications today?`),
-      ]
-      persist()
-    }
-  }
+  const persist = () => writeToStorage(tickets.value, chats.value)
 
   const connect = () => {
-    if (connected.value) return
+    if (!isFirebaseEnabled || isInitialized.value) return
+    console.log('🔌 TicketStore: Connecting to Firebase Realtime Database...')
 
     syncFromStorage()
 
-    const unsubscribe = listenValue('tickets', (value) => {
-      if (!value) {
+    // Listen to all tickets (Single Source of Truth)
+    const unsubscribeTickets = listenValue('tickets', (data) => {
+      if (!data) {
+        tickets.value = []
         persist()
         return
       }
 
-      const nextTickets = Object.entries(value as Record<string, Record<string, unknown>>).map(([id, item]) => ({
-        id,
-        ticketId: String(item.ticketId || `TKT-${String(id).slice(-3).toUpperCase()}`),
-        patientId: String(item.patientId || ''),
-        patientName: String(item.patientName || ''),
-        type: (item.type as TicketRecord['type']) || 'chat',
-        status: (item.status as TicketRecord['status']) || 'pending',
-        previewText: String(item.previewText || ''),
-        medication: item.medication ? String(item.medication) : undefined,
-        notes: item.notes ? String(item.notes) : undefined,
-        createdAt: String(item.createdAt || new Date().toISOString()),
-        updatedAt: String(item.updatedAt || new Date().toISOString()),
+      const ticketList = Object.entries(data as Record<string, any>).map(([key, val]) => ({
+        ticketId: key, // Use Firebase's auto-generated key as the ID
+        ...val
       }))
 
-      tickets.value = nextTickets.length ? nextTickets : defaultTickets
+      // Sort by newest first
+      tickets.value = ticketList.sort((a, b) => b.timestamp - a.timestamp)
       persist()
     })
 
-    unsubscribeFns.push(unsubscribe)
+    unsubscribeFns.push(unsubscribeTickets)
+    isInitialized.value = true
+  }
 
-    const chatsUnsubscribe = listenValue('chats', (value) => {
-      if (!value) {
-        persist()
+  const ensurePatientChat = async (patientId: string, patientName: string) => {
+    if (!isFirebaseEnabled) return
+
+    const unsubscribeChats = listenValue(`chats/${patientId}`, (data) => {
+      if (!data) {
+        chats.value[patientId] = []
         return
       }
-
-      const nextChats = Object.entries(value as Record<string, Record<string, unknown>>).reduce<ChatState>((acc, [patientId, messages]) => {
-        const nextMessages = Object.entries(messages as Record<string, Record<string, unknown>>).map(([messageId, message]) => ({
-          id: String(messageId),
-          sender: (message.sender as ChatMessagePayload['sender']) || 'patient',
-          text: String(message.text || ''),
-          createdAt: String(message.createdAt || new Date().toISOString()),
-        }))
-
-        acc[patientId] = nextMessages
-        return acc
-      }, {})
-
-      chats.value = nextChats
+      
+      const messages = Object.entries(data as Record<string, any>).map(([key, val]) => ({
+        id: key,
+        ...val
+      }))
+      
+      chats.value[patientId] = messages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
       persist()
     })
-
-    unsubscribeFns.push(chatsUnsubscribe)
-    connected.value = true
-  }
-
-  const getChatMessages = (patientId: string) => {
-    return chats.value[patientId] || []
-  }
-
-  const submitRefill = async (payload: { patientId: string, patientName: string, medication: string, notes: string }) => {
-    const refillTicket = buildRefillTicket(payload.patientName, payload.medication, payload.notes, payload.patientId)
-    const ticketId = `TKT-${Math.floor(Math.random() * 900 + 100)}`
-    const ticketPayload = {
-      ...refillTicket,
-      ticketId,
-      id: ticketId,
-    }
-
-    const created = await pushValue('tickets', ticketPayload)
-    const newTicket = {
-      ...ticketPayload,
-      id: created?.key || ticketId,
-      ticketId,
-    }
-
-    tickets.value = [newTicket, ...tickets.value]
-    persist()
-
-    return newTicket
+    
+    unsubscribeFns.push(unsubscribeChats)
   }
 
   const sendPatientMessage = async (patientId: string, patientName: string, text: string) => {
-    const message = buildChatMessage('patient', text)
-    const patientMessages = chats.value[patientId] || []
-    const nextMessages = [...patientMessages, message]
-    chats.value[patientId] = nextMessages
-    persist()
+    if (!isFirebaseEnabled) return
 
-    await pushValue(`chats/${patientId}`, message)
-
-    const existingTicket = tickets.value.find((ticket) => ticket.patientId === patientId && ticket.type === 'chat')
-    if (!existingTicket) {
-      const chatTicket = {
-        id: `chat-${patientId}`,
-        ticketId: `TKT-${Math.floor(Math.random() * 900 + 100)}`,
-        patientId,
-        patientName,
-        type: 'chat' as const,
-        status: 'pending' as const,
-        previewText: text,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-      tickets.value = [chatTicket, ...tickets.value]
-      await pushValue('tickets', chatTicket)
-      persist()
-    }
-
-    return message
-  }
-
-  const sendAgentReply = async (patientId: string, text: string) => {
-    const message = buildChatMessage('agent', text)
-    const patientMessages = chats.value[patientId] || []
-    chats.value[patientId] = [...patientMessages, message]
-    persist()
-
-    await pushValue(`chats/${patientId}`, message)
-    return message
-  }
-
-  const updateTicketStatus = async (ticketId: string, status: TicketRecord['status']) => {
-    const targetTicket = tickets.value.find((ticket) => ticket.id === ticketId)
-    if (!targetTicket) return null
-
-    const updatedTicket = {
-      ...targetTicket,
-      status,
-      updatedAt: new Date().toISOString(),
-    }
-
-    tickets.value = tickets.value.map((ticket) => ticket.id === ticketId ? updatedTicket : ticket)
-    persist()
-
-    await updateValue(`tickets/${targetTicket.id}`, {
-      status,
-      updatedAt: updatedTicket.updatedAt,
+    // 1. Push message. We don't push to local state because listenValue will handle it instantly.
+    await pushValue(`chats/${patientId}`, {
+      sender: 'patient',
+      text,
+      timestamp: Date.now()
     })
 
-    return updatedTicket
+    // 2. Check if an active ticket exists for this chat, if not, create one
+    const activeChatTicket = tickets.value.find(t => t.patientName === patientName && t.type === 'chat' && t.status === 'pending')
+    
+    if (!activeChatTicket) {
+      await pushValue('tickets', {
+        type: 'chat',
+        patientName: patientName,
+        status: 'pending',
+        timestamp: Date.now(),
+        previewText: text
+      })
+    }
+  }
+
+  const sendAgentMessage = async (patientId: string, text: string) => {
+    if (!isFirebaseEnabled) return
+    
+    await pushValue(`chats/${patientId}`, {
+      sender: 'agent',
+      text,
+      timestamp: Date.now()
+    })
+  }
+
+  const updateTicketStatus = async (ticketId: string, status: 'pending' | 'resolved') => {
+    if (!isFirebaseEnabled) return
+    await updateValue(`tickets/${ticketId}`, { status })
   }
 
   const cleanup = () => {
     unsubscribeFns.forEach((unsubscribe) => unsubscribe())
     unsubscribeFns.length = 0
-    connected.value = false
+    isInitialized.value = false
   }
 
   return {
+    // State
     tickets,
     chats,
-    connected,
+    isInitialized,
+    
+    // Getters
+    activeTickets,
+    getChatMessages,
+    
+    // Actions
     connect,
     ensurePatientChat,
-    getChatMessages,
-    submitRefill,
     sendPatientMessage,
-    sendAgentReply,
+    sendAgentMessage,
     updateTicketStatus,
-    cleanup,
+    cleanup
   }
 })
