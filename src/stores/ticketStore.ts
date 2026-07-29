@@ -84,12 +84,30 @@ export const useTicketStore = defineStore('tickets', () => {
         return
       }
       
-      const messages = Object.entries(data as Record<string, any>).map(([key, val]) => ({
-        id: key,
-        ...val
-      }))
+      const messages = Object.entries(data as Record<string, any>).map(([key, val]) => {
+        // Normalize the timestamp to handle legacy data formats like 'createdAt' strings
+        let normalizedTimestamp = val.timestamp;
+        
+        if (!normalizedTimestamp && val.createdAt) {
+           const parsedDate = new Date(val.createdAt);
+           if (!isNaN(parsedDate.getTime())) {
+               normalizedTimestamp = parsedDate.getTime();
+           }
+        }
+        
+        // Fallback if we completely fail to find a valid time
+        if (!normalizedTimestamp) {
+            normalizedTimestamp = 0;
+        }
+
+        return {
+          id: key,
+          ...val,
+          timestamp: normalizedTimestamp
+        }
+      })
       
-      chats.value[patientId] = messages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
+      chats.value[patientId] = messages.sort((a, b) => a.timestamp - b.timestamp)
       persist()
     })
     
