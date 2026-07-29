@@ -67,7 +67,7 @@
               >
                 <!-- Custom column formatting -->
                 <template #item.timestamp="{ item }">
-                  {{ new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}
+                  {{ formatTime(item.timestamp) }}
                 </template>
                 
                 <template #item.type="{ item }">
@@ -151,8 +151,8 @@
                     <div class="text-caption font-weight-bold text-capitalize" :class="message.sender === 'agent' ? 'text-primary' : ''">
                       {{ message.sender }}
                     </div>
-                    <div class="text-caption text-grey" v-if="message.timestamp">
-                        {{ new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}
+                    <div class="text-caption text-grey" v-if="message.timestamp || message.createdAt">
+                        {{ formatTime(message.timestamp || message.createdAt) }}
                     </div>
                 </div>
                 <div class="text-body-2">{{ message.text }}</div>
@@ -211,6 +211,15 @@ const selectedTicketMessages = computed(() => {
   if (!currentPatientId.value) return []
   return ticketStore.getChatMessages(currentPatientId.value)
 })
+
+// Helper function to handle mixed timestamp formats (ISO string vs epoch ms)
+const formatTime = (timeValue: string | number | undefined) => {
+  if (!timeValue) return '';
+  const date = new Date(timeValue);
+  if (isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 
 // Table Headers configuration
 const headers = [
