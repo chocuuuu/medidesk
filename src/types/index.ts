@@ -14,6 +14,7 @@ export interface ChatMessage {
   text: string;
   sender: 'system' | 'patient' | 'agent';
   timestamp?: number;
+  createdAt?: string | number;
 }
 
 export interface Ticket {
