@@ -147,8 +147,13 @@
                 No chat history found.
               </div>
               <div v-for="message in selectedTicketMessages" :key="message.id" class="mb-3">
-                <div class="text-caption font-weight-bold text-capitalize" :class="message.sender === 'agent' ? 'text-primary' : ''">
-                  {{ message.sender }}
+                <div class="d-flex justify-space-between align-center">
+                    <div class="text-caption font-weight-bold text-capitalize" :class="message.sender === 'agent' ? 'text-primary' : ''">
+                      {{ message.sender }}
+                    </div>
+                    <div class="text-caption text-grey" v-if="message.timestamp">
+                        {{ new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}
+                    </div>
                 </div>
                 <div class="text-body-2">{{ message.text }}</div>
               </div>
